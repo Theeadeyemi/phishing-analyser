@@ -183,10 +183,11 @@ def generate_report(report, enriched=None) -> bytes:
     _hr(story, C_DARK, 1.5)
 
     # ── VERDICT BLOCK ────────────────────────────────────────────────────────
-    combined_score = min(
-        report.risk_score + (enriched.enrichment_risk_score if enriched else 0),
-        100,
-    )
+    _parser_score     = report.risk_score
+    _raw_enrichment   = enriched.enrichment_risk_score if enriched else 0
+    combined_score    = min(_parser_score + _raw_enrichment, 100)
+    # enrichment_added = points that actually contributed after the 100 cap
+    _enrichment_added = combined_score - min(_parser_score, 100)
     final_label = _score_label(combined_score)
     v_colour    = RISK_COLOUR.get(final_label, C_MUTED)
 
@@ -197,7 +198,7 @@ def generate_report(report, enriched=None) -> bytes:
             [Paragraph("COMBINED RISK SCORE", styles["label"])],
             [Paragraph(f"{combined_score} / 100", ParagraphStyle("score_num",
                 fontName="Helvetica-Bold", fontSize=20, textColor=v_colour, leading=24))],
-            [Paragraph(f"Parser: {report.risk_score}  |  Enrichment: +{enriched.enrichment_risk_score if enriched else 0}",
+            [Paragraph(f"Parser: {_parser_score}  |  Enrichment: +{_enrichment_added}  |  Total: {combined_score}/100",
                 styles["caption"])],
         ], colWidths=[content_w * 0.4]),
         Table([

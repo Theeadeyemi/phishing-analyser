@@ -359,51 +359,123 @@ def score_label(s):
     if s >= 20: return "MEDIUM"
     return "LOW"
 
-combined_score = min(report.risk_score + (enriched.enrichment_risk_score if enriched else 0), 100)
-final_label    = score_label(combined_score)
-fg, bg         = RISK_COLOURS.get(final_label, ("#8899bb", "#111827"))
-all_factors    = report.risk_factors + (enriched.enrichment_risk_factors if enriched else [])
+parser_score     = report.risk_score
+raw_enrichment   = enriched.enrichment_risk_score if enriched else 0
+combined_score   = min(parser_score + raw_enrichment, 100)
+# enrichment_added = what actually got added after the 100 cap
+enrichment_score = combined_score - min(parser_score, 100)
+final_label      = score_label(combined_score)
+fg, bg           = RISK_COLOURS.get(final_label, ("#8899bb", "#111827"))
+all_factors      = report.risk_factors + (enriched.enrichment_risk_factors if enriched else [])
 
 st.markdown('<hr style="border-color:#1e2740;margin:1.5rem 0;">', unsafe_allow_html=True)
 
+# ─── Computed values ─────────────────────────────────────────────────────────────
+subj             = safe(report.raw_subject)[:65] + ("..." if len(report.raw_subject) > 65 else "")
+s_name           = safe(report.headers.sender_display_name)
+s_addr           = safe(report.headers.sender_email)
+bar_p            = min(parser_score, 100)
+bar_e            = min(enrichment_score, 100 - bar_p)
 
 # ─── Verdict banner ──────────────────────────────────────────────────────────────
-subj   = safe(report.raw_subject)[:65] + ("..." if len(report.raw_subject) > 65 else "")
-s_name = safe(report.headers.sender_display_name)
-s_addr = safe(report.headers.sender_email)
+import streamlit.components.v1 as _components
 
-st.markdown(f"""
-<div style="background:{bg};border:1px solid {fg}33;border-radius:12px;
-            padding:1.4rem 2rem;margin-bottom:1.5rem;
-            display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
-    <div>
-        <div style="font-family:JetBrains Mono,monospace;font-size:10px;
-                    color:{fg}99;letter-spacing:0.12em;margin-bottom:4px;">VERDICT</div>
-        <div style="font-family:Syne,sans-serif;font-size:38px;font-weight:800;
-                    color:{fg};letter-spacing:-0.02em;line-height:1;">{final_label}</div>
-        <div style="font-family:JetBrains Mono,monospace;font-size:12px;
-                    color:{fg}aa;margin-top:6px;">Combined risk score: {combined_score}/100</div>
-    </div>
-    <div style="text-align:right;max-width:420px;">
-        <div style="font-family:JetBrains Mono,monospace;font-size:12px;
-                    color:{fg}99;word-break:break-word;">{subj}</div>
-        <div style="font-family:JetBrains Mono,monospace;font-size:11px;
-                    color:{fg}66;margin-top:5px;">{s_name} &lt;{s_addr}&gt;</div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+_components.html(
+    "<style>@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@800&display=swap');</style>"
+    + "<div style='background:" + bg + ";border:1px solid " + fg + "33;border-radius:12px;"
+    + "padding:1.4rem 2rem;margin-bottom:0;display:flex;align-items:center;"
+    + "justify-content:space-between;flex-wrap:wrap;gap:1rem;'>"
+    + "<div>"
+    + "<div style='font-family:JetBrains Mono,monospace;font-size:10px;color:" + fg + "99;"
+    + "letter-spacing:0.12em;margin-bottom:4px;'>VERDICT</div>"
+    + "<div style='font-family:Syne,sans-serif;font-size:40px;font-weight:800;"
+    + "color:" + fg + ";letter-spacing:-0.02em;line-height:1;'>" + final_label + "</div>"
+    + "<div style='font-family:JetBrains Mono,monospace;font-size:12px;color:" + fg + "aa;"
+    + "margin-top:6px;'>Combined risk score: " + str(combined_score) + "/100</div>"
+    + "</div>"
+    + "<div style='text-align:right;max-width:420px;'>"
+    + "<div style='font-family:JetBrains Mono,monospace;font-size:12px;color:" + fg + "99;"
+    + "word-break:break-word;'>" + subj + "</div>"
+    + "<div style='font-family:JetBrains Mono,monospace;font-size:11px;color:" + fg + "66;"
+    + "margin-top:5px;'>" + s_name + " &lt;" + s_addr + "&gt;</div>"
+    + "</div></div>",
+    height=130,
+    scrolling=False,
+)
 
+# ─── Score inline bar (compact, always visible) ──────────────────────────────────
+_components.html(
+    "<style>@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');</style>"
+    + "<div style='display:flex;align-items:center;gap:14px;padding:10px 4px;'>"
+    # mini bar
+    + "<div style='flex:1;background:#131a2a;border-radius:4px;height:6px;overflow:hidden;display:flex;'>"
+    + "<div style='width:" + str(bar_p) + "%;background:" + fg + ";opacity:0.9;'></div>"
+    + "<div style='width:" + str(bar_e) + "%;background:" + fg + ";opacity:0.4;'></div>"
+    + "</div>"
+    # equation
+    + "<div style='font-family:JetBrains Mono,monospace;font-size:11px;color:#5a6a8a;white-space:nowrap;flex-shrink:0;'>"
+    + "<span style='color:#8899bb;'>" + str(parser_score) + " parser</span>"
+    + " <span style='color:#3a4a6a;'>+</span> "
+    + "<span style='color:#8899bb;'>+" + str(enrichment_score) + " threat intel</span>"
+    + " <span style='color:#3a4a6a;'>=</span> "
+    + "<span style='color:" + fg + ";font-weight:700;'>" + str(combined_score) + "/100</span>"
+    + "</div>"
+    + "</div>",
+    height=40,
+    scrolling=False,
+)
+
+# ─── Collapsible score guide ─────────────────────────────────────────────────────
+with st.expander("📊  How is this score calculated?", expanded=False):
+    _components.html(
+        "<style>@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');</style>"
+        + "<div style='padding:4px 0;'>"
+        # legend row
+        + "<div style='display:flex;gap:24px;flex-wrap:wrap;margin-bottom:14px;'>"
+        + "<div style='display:flex;align-items:center;gap:7px;'>"
+        + "<div style='width:10px;height:10px;border-radius:2px;background:" + fg + ";opacity:0.9;flex-shrink:0;'></div>"
+        + "<span style='font-family:JetBrains Mono,monospace;font-size:11px;color:#8899bb;'>"
+        + "Parser score <b style='color:#c8d0e0;'>" + str(parser_score) + "</b>"
+        + " &mdash; header + content analysis, no internet needed"
+        + "</span></div>"
+        + "<div style='display:flex;align-items:center;gap:7px;'>"
+        + "<div style='width:10px;height:10px;border-radius:2px;background:" + fg + ";opacity:0.4;flex-shrink:0;'></div>"
+        + "<span style='font-family:JetBrains Mono,monospace;font-size:11px;color:#8899bb;'>"
+        + "Enrichment <b style='color:#c8d0e0;'>+" + str(enrichment_score) + "</b>"
+        + " &mdash; live VirusTotal + AbuseIPDB (capped at 100 total)"
+        + "</span></div></div>"
+        # threshold cards
+        + "<div style='display:grid;grid-template-columns:repeat(4,1fr);gap:8px;'>"
+        + "<div style='background:#0d1220;border-radius:6px;padding:8px 10px;border-left:3px solid #ff3b5c;'>"
+        + "<div style='font-family:JetBrains Mono,monospace;font-size:10px;color:#ff3b5c;font-weight:700;margin-bottom:3px;'>CRITICAL &nbsp;70-100</div>"
+        + "<div style='font-family:JetBrains Mono,monospace;font-size:10px;color:#5a6a8a;line-height:1.5;'>High confidence phishing. Multiple threats confirmed. Do not interact.</div>"
+        + "</div>"
+        + "<div style='background:#0d1220;border-radius:6px;padding:8px 10px;border-left:3px solid #f97316;'>"
+        + "<div style='font-family:JetBrains Mono,monospace;font-size:10px;color:#f97316;font-weight:700;margin-bottom:3px;'>HIGH &nbsp;45-69</div>"
+        + "<div style='font-family:JetBrains Mono,monospace;font-size:10px;color:#5a6a8a;line-height:1.5;'>Strong phishing indicators. Manual review before any action.</div>"
+        + "</div>"
+        + "<div style='background:#0d1220;border-radius:6px;padding:8px 10px;border-left:3px solid #eab308;'>"
+        + "<div style='font-family:JetBrains Mono,monospace;font-size:10px;color:#eab308;font-weight:700;margin-bottom:3px;'>MEDIUM &nbsp;20-44</div>"
+        + "<div style='font-family:JetBrains Mono,monospace;font-size:10px;color:#5a6a8a;line-height:1.5;'>Suspicious patterns present. Verify the sender carefully.</div>"
+        + "</div>"
+        + "<div style='background:#0d1220;border-radius:6px;padding:8px 10px;border-left:3px solid #22c55e;'>"
+        + "<div style='font-family:JetBrains Mono,monospace;font-size:10px;color:#22c55e;font-weight:700;margin-bottom:3px;'>LOW &nbsp;0-19</div>"
+        + "<div style='font-family:JetBrains Mono,monospace;font-size:10px;color:#5a6a8a;line-height:1.5;'>Few indicators found. Likely legitimate but always verify.</div>"
+        + "</div></div></div>",
+        height=165,
+        scrolling=False,
+    )
 
 # ─── Metrics ─────────────────────────────────────────────────────────────────────
 c1, c2, c3, c4, c5, c6 = st.columns(6)
-c1.metric("Risk Score",    f"{combined_score}/100")
-c2.metric("URLs",          len(report.iocs.urls))
-c3.metric("Domains",       len(report.iocs.domains))
-c4.metric("IPs",           len(report.iocs.ips))
-c5.metric("Risk Factors",  len(all_factors))
-c6.metric("MITRE Tactics", len(report.mitre_techniques))
+c1.metric("Risk Score",    f"{combined_score}/100",  help="Parser score + enrichment score combined. Max 100.")
+c2.metric("URLs Found",    len(report.iocs.urls),    help="Links extracted from email headers and body.")
+c3.metric("Domains",       len(report.iocs.domains), help="Unique domains submitted to VirusTotal for reputation check.")
+c4.metric("IPs",           len(report.iocs.ips),     help="IP addresses checked against AbuseIPDB.")
+c5.metric("Risk Factors",  len(all_factors),         help="Individual detection rules triggered by this email.")
+c6.metric("MITRE Tactics", len(report.mitre_techniques), help="ATT&CK techniques mapped from the findings above.")
 
-st.markdown('<div style="height:0.5rem;"></div>', unsafe_allow_html=True)
+st.markdown('<div style="height:0.25rem;"></div>', unsafe_allow_html=True)
 
 # ─── PDF Download ────────────────────────────────────────────────────────────────
 from pdf_report import generate_report as _gen_pdf
@@ -649,9 +721,12 @@ with t_intel:
             st.info("Enable 'Live threat intel' and click Analyse again to run enrichment.")
     else:
         e1, e2, e3 = st.columns(3)
-        e1.metric("Malicious IOCs",   enriched.total_malicious)
-        e2.metric("Suspicious IOCs",  enriched.total_suspicious)
-        e3.metric("Enrichment Score", f"+{enriched.enrichment_risk_score}")
+        e1.metric("Malicious IOCs",   enriched.total_malicious,
+                  help="IOCs flagged MALICIOUS by VirusTotal or AbuseIPDB.")
+        e2.metric("Suspicious IOCs",  enriched.total_suspicious,
+                  help="IOCs flagged SUSPICIOUS but not confirmed malicious.")
+        e3.metric("Points Added to Score", f"+{enrichment_score}",
+                  help=f"Raw enrichment was +{enriched.enrichment_risk_score}, but score is capped at 100. Only +{enrichment_score} points were added.")
         st.markdown('<div style="height:0.5rem;"></div>', unsafe_allow_html=True)
 
         def vt_card(r):

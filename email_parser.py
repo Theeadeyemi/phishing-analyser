@@ -305,11 +305,20 @@ class PhishingParser:
         sender_domain = self._domain_from_email(sender_email)
 
         # --- Display name spoofing ---
+        # Extract the registered domain root (e.g. "barclays" from "barclays-secure-verify.com")
+        # so that typosquat domains like barclays-secure-verify.com don't pass as legitimate
+        import tldextract as _tld
+        _ext = _tld.extract(sender_email)
+        sender_domain_root = _ext.domain.lower() if _ext.domain else ""
         name_lower = sender_display_name.lower()
         for brand in BRAND_KEYWORDS:
-            if brand in name_lower and brand not in (sender_domain or "").lower():
-                ha.display_name_spoofing = True
-                break
+            if brand in name_lower:
+                # Only skip the flag if the sender domain ROOT exactly matches the brand
+                # e.g. brand="barclays", root="barclays" → legitimate
+                # e.g. brand="barclays", root="barclays-secure-verify" → spoof
+                if sender_domain_root != brand:
+                    ha.display_name_spoofing = True
+                    break
 
         # --- Reply-To mismatch ---
         if reply_to:
@@ -635,15 +644,23 @@ class PhishingParser:
 
     @staticmethod
     def _parse_address(header_val: str) -> tuple[str, str]:
-        """Extract (display_name, email) from a From/Reply-To header value."""
+        """
+        Extract (display_name, email) from a From/Reply-To header value.
+        Handles: Name <addr>,  "Name" <addr>,  plain@addr.com,  <addr>
+        """
         header_val = header_val.strip()
-        match = re.match(r'^"?([^"<]*)"?\s*<?([^>]+)>?$', header_val)
-        if match:
-            name = match.group(1).strip().strip('"')
-            addr = match.group(2).strip()
+        if not header_val:
+            return "", ""
+        # Format with angle brackets: optional name then <email>
+        bracket = re.match(r'(.*?)<([^>]+)>', header_val)
+        if bracket:
+            name = bracket.group(1).strip().strip('"').strip("'").strip()
+            addr = bracket.group(2).strip()
             return name, addr
+        # Plain email address with no brackets
         if "@" in header_val:
-            return "", header_val.strip("<>")
+            return "", header_val.strip()
+        # Just a name, no address found
         return header_val, ""
 
     @staticmethod
