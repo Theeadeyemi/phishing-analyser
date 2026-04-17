@@ -8,15 +8,15 @@ Built by **Theeadeyemi** as a practical cybersecurity project to demonstrate rea
 
 ## Features
 
-- **Email parser** — extracts IOCs from raw `.eml` files: URLs, domains, IPs, email addresses, attachments
-- **Header anomaly detection** — display name spoofing, Reply-To mismatches, free email providers, suspicious Message-IDs
-- **Social engineering detection** — urgency language, credential lures, threat phrases, brand impersonation
-- **VirusTotal integration** — live URL, domain, and IP reputation lookups
-- **AbuseIPDB integration** — IP abuse score, country, ISP, Tor exit node detection
-- **MITRE ATT&CK mapping** — each finding mapped to a framework technique with direct links
-- **Risk scoring engine** — 0–100 combined score (parser + threat intel), labelled LOW / MEDIUM / HIGH / CRITICAL
-- **PDF report export** — professional downloadable report after every analysis
-- **4 built-in UK phishing samples** — HMRC, Royal Mail, Barclays, Microsoft 365
+- **Email parser**: extracts IOCs from raw `.eml` files: URLs, domains, IPs, email addresses, attachments
+- **Header anomaly detection**: display name spoofing, Reply-To mismatches, free email providers, suspicious Message-IDs
+- **Social engineering detection**: urgency language, credential lures, threat phrases, brand impersonation
+- **VirusTotal integration**: live URL, domain, and IP reputation lookups
+- **AbuseIPDB integration**: IP abuse score, country, ISP, Tor exit node detection
+- **MITRE ATT&CK mapping**: each finding mapped to a framework technique with direct links
+- **Risk scoring engine**: 0–100 combined score (parser + threat intel), labelled LOW / MEDIUM / HIGH / CRITICAL
+- **PDF report export**: professional downloadable report after every analysis
+- **4 built-in UK phishing samples**: HMRC, Royal Mail, Barclays, Microsoft 365
 
 ---
 
