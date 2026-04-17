@@ -1,6 +1,6 @@
 # 🎣 Phishing Email Analyser
 
-A Python-based threat intelligence tool that parses raw phishing emails, extracts indicators of compromise (IOCs), enriches them with live API data, and generates a downloadable PDF report — all through a clean web dashboard.
+A Python-based threat intelligence tool that parses raw phishing emails, extracts indicators of compromise (IOCs), enriches them with live API data, and generates a downloadable PDF report, all through a clean web dashboard.
 
 Built by **Theeadeyemi** as a practical cybersecurity project to demonstrate real-world skills in threat analysis, IOC extraction, and API integration.
 
